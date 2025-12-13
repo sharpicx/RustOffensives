@@ -5,7 +5,8 @@
 - [x] Clipboard Monitor
 - [x] Cloud Credentials
 - [ ] Unminize Window/Screen Screenshot
-- [ ] DNS Caches
+- [x] DNS Caches
+- [x] [FileVersionInfo.GetVersionInfo(String)](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.5)
 - [ ] Inline Execute
 - [ ] Interesting Files
 - [x] Local Recyclebin
