@@ -4,7 +4,7 @@
 - [x] Arp Tables
 - [x] Clipboard Monitor
 - [x] Cloud Credentials
-- [ ] Sticky notes, notepad, etc
+- [ ] Unminize Window/Screen Screenshot
 - [ ] DNS Caches
 - [ ] Inline Execute
 - [ ] Interesting Files
