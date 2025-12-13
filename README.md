@@ -2,8 +2,9 @@
 
 - [x] AppLocker Settings
 - [x] Arp Tables
-- [ ] Clipboard Monitor and Dumps
+- [x] Clipboard Monitor
 - [ ] Cloud Credentials
+- [ ] Sticky notes, notepad, etc
 - [ ] DNS Caches
 - [ ] Inline Execute
 - [ ] Interesting Files

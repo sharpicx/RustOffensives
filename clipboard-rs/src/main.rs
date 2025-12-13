@@ -78,6 +78,8 @@ unsafe fn run_clipboard_listener() -> Result<()> {
     Ok(())
 }
 
+pub fn get_clipboards() -> Result<()> {}
+
 fn main() -> Result<()> {
     //    unsafe { run_clipboard_listener()? };
 
