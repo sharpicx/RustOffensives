@@ -42,6 +42,16 @@ pub struct NetworkInterfaceInfo {
     pub arp_entries: Vec<ArpTableEntry>,
 }
 
+fn arp_type_to_str(t: MIB_IPNET_TYPE) -> &'static str {
+    match t.0 {
+        1 => "Other",
+        2 => "Invalid",
+        3 => "Dynamic",
+        4 => "Static",
+        _ => "Unknown",
+    }
+}
+
 pub fn get_network_interfaces() -> Vec<(NetworkInterfaceInfo)> {
     unsafe {
         let mut buffer_length: u32 = 0;
@@ -240,10 +250,10 @@ pub fn print_interface(interface: &NetworkInterfaceInfo) {
 
     for e in &interface.arp_entries {
         println!(
-            "    {:<22}{:<22}{:?}",
+            "    {:<22}{:<22}{}",
             ipv4_from_u32(e.dw_addr),
             mac_to_string(&e.mac_address, e.mac_address_len),
-            e.state
+            arp_type_to_str(e.state)
         );
     }
 
