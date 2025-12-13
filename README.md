@@ -3,7 +3,7 @@
 - [x] AppLocker Settings
 - [x] Arp Tables
 - [x] Clipboard Monitor
-- [ ] Cloud Credentials
+- [x] Cloud Credentials
 - [ ] Sticky notes, notepad, etc
 - [ ] DNS Caches
 - [ ] Inline Execute
