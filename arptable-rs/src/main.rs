@@ -52,7 +52,7 @@ fn arp_type_to_str(t: MIB_IPNET_TYPE) -> &'static str {
     }
 }
 
-pub fn get_network_interfaces() -> Vec<(NetworkInterfaceInfo)> {
+pub fn get_network_interfaces() -> Vec<NetworkInterfaceInfo> {
     unsafe {
         let mut buffer_length: u32 = 0;
         let ret = GetAdaptersAddresses(
