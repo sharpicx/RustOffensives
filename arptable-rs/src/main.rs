@@ -231,7 +231,7 @@ fn mac_to_string(bytes: &[u8; 8], len: u32) -> String {
 }
 
 fn ipv4_from_u32(addr: u32) -> String {
-    std::net::Ipv4Addr::from(u32::from_le(addr)).to_string()
+    std::net::Ipv4Addr::from(u32::from_be(addr)).to_string()
 }
 
 pub fn print_interface(interface: &NetworkInterfaceInfo) {
