@@ -1,7 +1,7 @@
 # RustOffensives
 
-- [ ] AppLocker Settings
-- [ ] Arp Tables
+- [x] AppLocker Settings
+- [x] Arp Tables
 - [ ] Clipboard Monitor and Dumps
 - [ ] Cloud Credentials
 - [ ] DNS Caches
