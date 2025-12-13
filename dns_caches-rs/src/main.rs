@@ -26,24 +26,19 @@ fn main() {
     };
 
     for row in rows {
-        let entry = row
-            .get("Entry")
-            .map(|v| format!("{:?}", v))
-            .unwrap_or_default();
-        let name = row
-            .get("Name")
-            .map(|v| format!("{:?}", v))
-            .unwrap_or_default();
-        let data = row
-            .get("Data")
-            .map(|v| format!("{:?}", v))
-            .unwrap_or_default();
+        let entry = match row.get("Entry") {
+            Some(Variant::String(s)) => s,
+            _ => "",
+        };
+        let name = match row.get("Name") {
+            Some(Variant::String(s)) => s,
+            _ => "",
+        };
+        let data = match row.get("Data") {
+            Some(Variant::String(s)) => s,
+            _ => "",
+        };
 
-        println!(
-            "Entry: {}\n Name: {}\n Data: {}\n\n",
-            entry.to_string(),
-            name.to_string(),
-            data.to_string()
-        );
+        println!("Entry: {}\nName: {}\nData: {}\n", entry, name, data);
     }
 }
