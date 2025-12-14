@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+windows = { version = "=0.60", features = [
+  "Win32_UI_Shell",
+  "Win32_System_Com",
+  "Win32_System_Variant",
+  "Win32_System_Ole",
+] }
+widestring = "1.2.1"
+regex = "1.12.2"
+chrono = "0.4.42"
