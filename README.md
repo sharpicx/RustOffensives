@@ -11,7 +11,7 @@
 - [ ] Interesting Files
 - [x] Local Recyclebin
 - [ ] Logon Sessions
-- [ ] Microsoft Updates
+- [x] Microsoft Updates
 - [ ] Powershell History
 - [ ] Scheduled Task
 - [x] TCP UDP Connections
