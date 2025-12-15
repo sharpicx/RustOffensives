@@ -4,3 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+wmi = "0.18.0"
+winreg = "0.55.0"
+regex = "1.12.2"
+winapi = { version = "0.3.9", features = [
+  "winver",
+  "winnt",
+  "minwinbase",
+  "fileapi",
+  "aclapi",
+  "accctrl",
+  "winerror",
+  "sddl",
+  "securitybaseapi",
+] }
