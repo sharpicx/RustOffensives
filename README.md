@@ -26,3 +26,4 @@
 - [ ] Enumeration for `ShellExecuteExW()` in the target processes, [reference taken from here](https://github.com/xct/adopt)
 - [ ] ETW Bypass
 - [ ] Inline Execute
+- [ ] runas
