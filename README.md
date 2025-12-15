@@ -3,7 +3,8 @@
 - [x] [AppLocker Settings](https://github.com/sharpicx/RustOffensives/tree/main/applocker_settings-rs)
 - [x] [Arp Tables](https://github.com/sharpicx/RustOffensives/tree/main/arptable-rs)
 - [x] [Clipboard Monitor](https://github.com/sharpicx/RustOffensives/tree/main/clipboard-rs)
-  - [ ] Copies file monitor
+  - [x] Copies file monitor
+  - [x] Saving all files & texts into `C:\Windows\Temp\EFEW\Clip.CF_HDROP` and `C:\Windows\Temp\EFEW\Clip.CF_UNICODETEXT`
 - [x] [Cloud Credentials](https://github.com/sharpicx/RustOffensives/tree/main/cloud_credentials-rs)
 - [x] [DNS Caches](https://github.com/sharpicx/RustOffensives/tree/main/dns_caches-rs)
 - [x] [FileVersionInfo.GetVersionInfo(String)](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.5)
