@@ -23,4 +23,5 @@
 - [ ] [Winpspy](https://github.com/xct/winpspy)
 - [ ] Enumeration for Mocking Jay (RWX Sections in DLLs that already installed on the target)
 - [ ] Enumeration for `ShellExecuteExW()` in the target processes, [reference taken from here](https://github.com/xct/adopt).
+- [ ] ETW Bypass
 - [ ] Inline Execute
