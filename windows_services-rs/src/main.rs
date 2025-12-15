@@ -439,3 +439,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 // https://redfoxsec.com/blog/abusing-acl-misconfigurations/
+// https://redfoxsecurity.medium.com/abusing-acl-misconfigurations-e1f7a7dea14d
