@@ -1,5 +1,5 @@
 [package]
-name = "window_services-rs"
+name = "windows_services-rs"
 version = "0.1.0"
 edition = "2024"
 

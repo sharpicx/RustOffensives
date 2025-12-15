@@ -1,20 +1,26 @@
 # RustOffensives
 
-- [x] AppLocker Settings
-- [x] Arp Tables
-- [x] Clipboard Monitor
-- [x] Cloud Credentials
-- [ ] Unminize Window/Screen Screenshot
-- [x] DNS Caches
+- [x] [AppLocker Settings](https://github.com/sharpicx/RustOffensives/tree/main/applocker_settings-rs)
+- [x] [Arp Tables](https://github.com/sharpicx/RustOffensives/tree/main/arptable-rs)
+- [x] [Clipboard Monitor](https://github.com/sharpicx/RustOffensives/tree/main/clipboard-rs)
+- [x] [Cloud Credentials](https://github.com/sharpicx/RustOffensives/tree/main/cloud_credentials-rs)
+- [x] [DNS Caches](https://github.com/sharpicx/RustOffensives/tree/main/dns_caches-rs)
 - [x] [FileVersionInfo.GetVersionInfo(String)](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.fileversioninfo.getversioninfo?view=netframework-4.5)
-- [ ] Inline Execute
+- [x] [Local Recyclebin](https://github.com/sharpicx/RustOffensives/tree/main/local_recyclebin-rs)
+- [x] [Microsoft Updates](https://github.com/sharpicx/RustOffensives/tree/main/microsoft_updates-rs)
+- [x] [Scheduled Task](https://github.com/sharpicx/RustOffensives/tree/main/scheduled_task-rs)
+- [x] [TCP UDP Connections](https://github.com/sharpicx/RustOffensives/tree/main/tcp_udp_connections-rs)
+- [x] [WIfi Dumping](https://github.com/sharpicx/RustOffensives/tree/main/wifi_dumping_example) Example
+- [ ] [Logon Sessions](https://github.com/sharpicx/RustOffensives/tree/main/logon_sessions-rs)
+- [ ] [Powershell History](https://github.com/sharpicx/RustOffensives/tree/main/powershell_history-rs)
+- [ ] [Windows Service](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
 - [ ] Interesting Files
-- [x] Local Recyclebin
-- [ ] Logon Sessions
-- [x] Microsoft Updates
-- [ ] Powershell History
-- [x] Scheduled Task
-- [x] TCP UDP Connections
-- [x] WIfi Dumping
-- [ ] Windows Service
-- [ ] Winpspy
+- [ ] [Screen Screenshot](https://github.com/xct/scr)
+  - [ ] Detects Minimize / Maximize program (Window)
+  - [ ] Unminimizes / Minimizes program (Window)
+  - [ ] After that, take a screenshot
+- [ ] Procdump / Nanodump
+- [ ] [Winpspy](https://github.com/xct/winpspy)
+- [ ] Enumeration for Mocking Jay (RWX Sections in DLLs that already installed on the target)
+- [ ] Enumeration for `ShellExecuteExW()` in the target processes, [reference taken from here](https://github.com/xct/adopt).
+- [ ] Inline Execute
