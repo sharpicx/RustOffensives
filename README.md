@@ -11,7 +11,7 @@
 - [x] [Scheduled Task](https://github.com/sharpicx/RustOffensives/tree/main/scheduled_task-rs)
 - [x] [TCP UDP Connections](https://github.com/sharpicx/RustOffensives/tree/main/tcp_udp_connections-rs)
 - [x] [WIfi Dumping](https://github.com/sharpicx/RustOffensives/tree/main/wifi_dumping_example) Example
-- [ ] [Logon Sessions](https://github.com/sharpicx/RustOffensives/tree/main/logon_sessions-rs)
+- [x] [Logon Sessions](https://github.com/sharpicx/RustOffensives/tree/main/logon_sessions-rs)
 - [ ] [Powershell History](https://github.com/sharpicx/RustOffensives/tree/main/powershell_history-rs)
 - [ ] [Windows Service](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
 - [ ] Interesting Files
