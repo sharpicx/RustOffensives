@@ -13,7 +13,7 @@
 - [ ] Logon Sessions
 - [x] Microsoft Updates
 - [ ] Powershell History
-- [ ] Scheduled Task
+- [x] Scheduled Task
 - [x] TCP UDP Connections
 - [x] WIfi Dumping
 - [ ] Windows Service
