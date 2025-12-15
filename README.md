@@ -14,7 +14,7 @@
 - [x] [WIfi Dumping](https://github.com/sharpicx/RustOffensives/tree/main/wifi_dumping_example) Example
 - [x] [Logon Sessions](https://github.com/sharpicx/RustOffensives/tree/main/logon_sessions-rs)
 - [x] [Powershell History](https://github.com/sharpicx/RustOffensives/tree/main/powershell_history-rs)
-- [ ] [Windows Service](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
+- [x] [Windows Service](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
 - [ ] Interesting Files
 - [ ] [Screen Screenshot](https://github.com/xct/scr)
   - [ ] Detects Minimize / Maximize program (Window)
