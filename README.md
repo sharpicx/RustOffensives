@@ -15,12 +15,11 @@
 - [x] [WIfi Dumping](https://github.com/sharpicx/RustOffensives/tree/main/wifi_dumping_example) Example
 - [x] [Logon Sessions](https://github.com/sharpicx/RustOffensives/tree/main/logon_sessions-rs)
 - [x] [Powershell History](https://github.com/sharpicx/RustOffensives/tree/main/powershell_history-rs)
-- [x] [Windows Service](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
-- [ ] Interesting Files
-- [ ] [Screen Screenshot](https://github.com/xct/scr)
-  - [ ] Detects Minimize / Maximize program (Window)
-  - [ ] Unminimizes / Minimizes program (Window)
-  - [ ] After that, take a screenshot
+- [x] [Windows Services](https://github.com/sharpicx/RustOffensives/tree/main/windows_services-rs)
+- [x] [Screen Screenshot](https://github.com/xct/scr)
+  - [x] Enumerates all HWND windows & states
+  - [x] Manipulate window states
+  - [x] After that, take a screenshot
 - [ ] Procdump / Nanodump
 - [ ] [Winpspy](https://github.com/xct/winpspy)
 - [ ] Enumeration for Mocking Jay (RWX Sections in DLLs that already installed on the target)
