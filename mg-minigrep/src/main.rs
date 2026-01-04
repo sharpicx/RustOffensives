@@ -1,8 +1,9 @@
 mod argparser;
-mod enum_date;
-mod enum_drives;
-mod enum_sus_files_dirs;
-mod enum_sus_keywords;
+mod find;
+mod get_date;
+mod get_drives;
+mod get_exts;
+mod grep;
 
 fn main() {
     let cli = argparser::parse_cli();

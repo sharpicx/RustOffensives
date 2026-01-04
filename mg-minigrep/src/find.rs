@@ -1,4 +1,4 @@
-use crate::enum_date;
+use crate::get_date;
 use chrono::{DateTime, Local};
 use colored::*;
 use std::fs;
@@ -19,6 +19,7 @@ fn fast_collect_stream(
     folder: &Option<String>,
     exclude_exts: &[String],
     exclude_roots: &[String],
+    exclude_dirs: &[String],
 ) {
     let mut stack = vec![root.to_path_buf()];
 
@@ -55,6 +56,16 @@ fn fast_collect_stream(
             };
 
             if meta.is_dir() {
+                let dir_name = p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_lowercase())
+                    .unwrap_or_default();
+
+                if exclude_dirs.iter().any(|x| dir_name.contains(x)) {
+                    continue;
+                }
+
                 stack.push(p);
                 continue;
             }
@@ -85,6 +96,7 @@ pub fn enum_sus_files_dirs(
     exclude_roots: Option<String>,
     exclude_exts: Option<String>,
     exclude_date: Option<String>,
+    exclude_dirs: Option<String>,
 ) {
     let mut roots: Vec<String> = vec![
         r"C:\Windows".into(),
@@ -92,6 +104,13 @@ pub fn enum_sus_files_dirs(
         r"C:\Users".into(),
     ];
     roots.extend(add_roots);
+
+    let exclude_dirs: Vec<String> = exclude_dirs
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
 
     let exclude_exts: Vec<String> = exclude_exts
         .unwrap_or_default()
@@ -123,9 +142,17 @@ pub fn enum_sus_files_dirs(
         let folder_l = folder_l.clone();
         let exclude_exts = exclude_exts.clone();
         let exclude_list = exclude_list.clone();
+        let exclude_dirs = exclude_dirs.clone();
 
         thread::spawn(move || {
-            fast_collect_stream(Path::new(&r), &tx, &folder_l, &exclude_exts, &exclude_list);
+            fast_collect_stream(
+                Path::new(&r),
+                &tx,
+                &folder_l,
+                &exclude_exts,
+                &exclude_list,
+                &exclude_dirs,
+            );
         });
     }
 
@@ -134,10 +161,10 @@ pub fn enum_sus_files_dirs(
     let filter = filter.map(|x| x.to_lowercase());
     let folder = folder.map(|x| x.to_lowercase());
 
-    let exclude_dates: Vec<enum_date::DateFilter> = exclude_date
+    let exclude_dates: Vec<get_date::DateFilter> = exclude_date
         .unwrap_or_default()
         .split(',')
-        .filter_map(|s| enum_date::parse_filter(s.trim()))
+        .filter_map(|s| get_date::parse_filter(s.trim()))
         .collect();
 
     let mut printed_header = false;
@@ -162,7 +189,7 @@ pub fn enum_sus_files_dirs(
 
         let exclude_failed = exclude_dates
             .iter()
-            .any(|f| enum_date::matches_filter(&dt, f));
+            .any(|f| get_date::matches_filter(&dt, f));
 
         if filter_failed || folder_failed || exclude_failed {
             continue;

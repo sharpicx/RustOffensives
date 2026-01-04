@@ -1,29 +1,30 @@
 use clap::CommandFactory;
 use clap::{Parser, Subcommand};
 
-use crate::enum_date;
-use crate::enum_drives;
-use crate::enum_sus_files_dirs;
-use crate::enum_sus_keywords;
+use crate::find;
+use crate::get_date;
+use crate::get_drives;
+use crate::get_exts;
+use crate::grep;
 
 #[derive(Parser)]
-#[command(name = "EFEW")]
+#[command(name = "mg (minigrep)")]
 #[command(version = "1.33.7")]
-#[command(about = "minigrep implementation by @sharpicx.")]
+#[command(about = "mg (minigrep) implementation by @sharpicx.")]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Args>,
 }
 
 #[derive(Subcommand)]
-pub enum Args {
+enum Args {
     #[command(about = "Enumerates drives")]
-    EnumDrives,
+    GetDrives,
 
     #[command(
         about = "Enumerates and collects all dates of created files, directories, in the system"
     )]
-    EnumDate {
+    GetDate {
         #[arg(
             long,
             help = r#"Select drives to be used for collecting dates, e.g: C:\"#
@@ -37,8 +38,17 @@ pub enum Args {
         filter_date: Option<String>,
     },
 
+    #[command(about = "Enumerates all file extensions")]
+    GetExts {
+        #[arg(long = "roots", help = "Select roots folder you want to enumerate")]
+        roots: Option<String>,
+
+        #[arg(long = "exclude-roots", help = "Excluding roots folder / drives")]
+        exclude_roots: Option<String>,
+    },
+
     #[command(about = "Enumerates all suspicious created files, directories, folders by date")]
-    EnumSusFiles {
+    Find {
         #[arg(long)]
         match_date: Option<String>,
 
@@ -56,23 +66,35 @@ pub enum Args {
 
         #[arg(long = "exclude-date")]
         exclude_date: Option<String>,
+
+        #[arg(long = "exclude-folders")]
+        exclude_dirs: Option<String>,
     },
 
     #[command(
         about = "Enumerates all files, directories, folders that have sensitive keywords (general & date)"
     )]
-    EnumSusWord {
-        #[arg(long)]
-        dirs: Option<String>,
+    Grep {
+        #[arg(long = "roots")]
+        roots: Option<String>,
 
-        #[arg(long = "add-words")]
+        #[arg(long = "add-words", conflicts_with = "only")]
         add_words: Option<String>,
+
+        #[arg(long, conflicts_with = "add_words")]
+        only: Option<String>,
 
         #[arg(long = "exclude-exts")]
         exclude_exts: Option<String>,
 
         #[arg(long = "exclude-dirs")]
         exclude_dirs: Option<String>,
+
+        #[arg(long = "exclude-files")]
+        exclude_files: Option<String>,
+
+        #[arg(long = "exclude-paths")]
+        exclude_paths: Option<String>,
 
         #[arg(long = "exclude-words")]
         exclude_words: Option<String>,
@@ -82,6 +104,12 @@ pub enum Args {
 
         #[arg(long = "match-date")]
         match_date: Option<String>,
+
+        #[arg(short = 'i', long = "ignore-case", default_value_t = true)]
+        ignore_case: bool,
+
+        #[arg(long)]
+        binary: bool,
     },
 }
 
@@ -105,58 +133,73 @@ fn print_help_subcommand(cmd: &mut clap::Command, name: &str) {
 
 pub fn run(cli: Cli) {
     match cli.command {
-        Some(Args::EnumDate {
+        Some(Args::GetDate {
             drives,
             filter_date,
         }) => {
             if drives.is_none() && filter_date.is_none() {
                 let mut cmd = Cli::command();
-                print_help_subcommand(&mut cmd, "enum-date");
+                print_help_subcommand(&mut cmd, "get-date");
                 return;
             }
-            enum_date::enum_date(drives.unwrap_or_default(), filter_date.unwrap_or_default())
+            get_date::enum_date(drives.unwrap_or_default(), filter_date.unwrap_or_default())
         }
-
-        Some(Args::EnumDrives) => enum_drives::enum_drives(),
-        Some(Args::EnumSusWord {
-            dirs,
+        Some(Args::GetExts {
+            roots,
+            exclude_roots,
+        }) => {
+            if roots.is_none() && exclude_roots.is_none() {
+                let mut cmd = Cli::command();
+                print_help_subcommand(&mut cmd, "get-exts");
+                return;
+            }
+            let r = roots.unwrap_or_else(|| "C:\\".to_string());
+            let er = exclude_roots.unwrap_or_else(|| "".to_string());
+            get_exts::run_get_exts(r, er);
+        }
+        Some(Args::GetDrives) => get_drives::enum_drives(),
+        Some(Args::Grep {
+            roots,
             add_words,
             exclude_exts,
             exclude_dirs,
+            exclude_files,
+            exclude_paths,
             exclude_words,
             exclude_date,
             match_date,
+            only,
+            ignore_case,
+            binary,
         }) => {
-            if dirs.is_none()
-                && add_words.is_none()
-                && exclude_words.is_none()
-                && exclude_dirs.is_none()
-                && exclude_dirs.is_none()
-                && exclude_words.is_none()
-                && exclude_date.is_none()
-                && match_date.is_none()
-            {
+            if roots.is_none() {
                 let mut cmd = Cli::command();
-                print_help_subcommand(&mut cmd, "enum-sus-word");
+                print_help_subcommand(&mut cmd, "grep");
                 return;
             }
-            enum_sus_keywords::enum_sus_keywords(
-                dirs.unwrap_or_default(),
+            grep::enum_sus_keywords(
+                roots.unwrap(),
                 add_words.unwrap_or_default(),
                 exclude_exts.unwrap_or_default(),
                 exclude_dirs.unwrap_or_default(),
+                exclude_files.unwrap_or_default(),
+                exclude_paths.unwrap_or_default(),
                 exclude_words.unwrap_or_default(),
                 exclude_date.unwrap_or_default(),
                 match_date.unwrap_or_default(),
+                only.unwrap_or_default(),
+                ignore_case,
+                binary,
             );
         }
-        Some(Args::EnumSusFiles {
+        Some(Args::Find {
             match_date,
             match_name,
             add_roots,
             exclude_roots,
             exclude_exts,
             exclude_date,
+            exclude_dirs,
         }) => {
             if match_date.is_none()
                 && match_name.is_none()
@@ -164,19 +207,21 @@ pub fn run(cli: Cli) {
                 && exclude_roots.is_none()
                 && exclude_exts.is_none()
                 && exclude_date.is_none()
+                && exclude_dirs.is_none()
             {
                 let mut cmd = Cli::command();
-                print_help_subcommand(&mut cmd, "enum-sus-files");
+                print_help_subcommand(&mut cmd, "find");
                 return;
             }
 
-            enum_sus_files_dirs::enum_sus_files_dirs(
+            find::enum_sus_files_dirs(
                 match_date,
                 match_name,
                 add_roots,
                 exclude_roots,
                 exclude_exts,
                 exclude_date,
+                exclude_dirs,
             )
         }
         None => {
