@@ -84,7 +84,6 @@ fn fast_collect_stream(
 }
 
 fn fmt_time(t: SystemTime) -> String {
-    use chrono::{DateTime, Local};
     let dt: DateTime<Local> = t.into();
     dt.format("%d-%m-%Y %H:%M:%S").to_string()
 }
@@ -126,15 +125,12 @@ pub fn enum_sus_files_dirs(
         .filter(|s| !s.is_empty())
         .collect();
 
-    if !exclude_list.is_empty() {
-        roots.retain(|r| {
-            let rl = r.to_lowercase();
-            !exclude_list.iter().any(|x| rl.starts_with(x))
-        });
-    }
+    roots.retain(|r| {
+        let rl = r.to_lowercase();
+        !exclude_list.iter().any(|x| rl.starts_with(x))
+    });
 
     let folder_l = folder.clone().map(|x| x.to_lowercase());
-
     let (tx, rx) = std::sync::mpsc::channel();
 
     for r in roots {
@@ -175,18 +171,8 @@ pub fn enum_sus_files_dirs(
         let pl = e.path.to_lowercase();
         let dt: DateTime<Local> = e.created.into();
 
-        let filter_failed = if let Some(f) = &filter {
-            !tl.contains(f)
-        } else {
-            false
-        };
-
-        let folder_failed = if let Some(fd) = &folder {
-            !pl.contains(fd)
-        } else {
-            false
-        };
-
+        let filter_failed = filter.as_ref().map_or(false, |f| !tl.contains(f));
+        let folder_failed = folder.as_ref().map_or(false, |fd| !pl.contains(fd));
         let exclude_failed = exclude_dates
             .iter()
             .any(|f| get_date::matches_filter(&dt, f));

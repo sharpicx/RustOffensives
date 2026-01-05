@@ -22,7 +22,6 @@ pub fn run_get_exts(roots_raw: String, exclude_roots_raw: String) {
     let roots = split_csv(roots_raw);
     let exclude_roots = split_csv(exclude_roots_raw);
 
-    // Default system exclusion untuk kestabilan dan kecepatan
     let system_excludes = vec![
         "system volume information".to_string(),
         "$recycle.bin".to_string(),
@@ -85,7 +84,6 @@ pub fn run_get_exts(roots_raw: String, exclude_roots_raw: String) {
                     let entry = stats.entry(ext).or_insert((0, Vec::new()));
                     entry.0 += 1;
 
-                    // Batasi hanya simpan 5 contoh path agar RAM tidak jebol di C:\
                     if entry.1.len() < 5 {
                         entry.1.push(full);
                     }
@@ -105,23 +103,7 @@ pub fn run_get_exts(roots_raw: String, exclude_roots_raw: String) {
 fn print_report(stats: HashMap<String, (usize, Vec<PathBuf>)>) {
     let mut final_list: Vec<_> = stats.into_iter().collect();
 
-    // Sort berdasarkan jumlah file terbanyak
     final_list.sort_by(|a, b| b.1.0.cmp(&a.1.0));
-
-    println!(
-        "\n{}",
-        "===================================================".bright_black()
-    );
-    println!(
-        "{}",
-        "         FILES ENUMERATION REPORT                  "
-            .bright_cyan()
-            .bold()
-    );
-    println!(
-        "{}\n",
-        "===================================================".bright_black()
-    );
 
     for (ext, (count, examples)) in &final_list {
         if *count == 0 {
