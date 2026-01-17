@@ -1,0 +1,7 @@
+/dotnet/
+/dotnet/*
+/target
+/target/*
+/string_generator
+/string_generator/*
+Cargo.lock
