@@ -1,5 +1,9 @@
 # RustOffensives
 
+- [exec-assembly](/exec_assembly-rs)
+- [x] [Dynamic Resolve API](/dynamic_resolve_api-rs) (PoC: Shellcode Execution) – succeed.
+    - [x] `ntdll.dll`
+    - [x] `kernel32.dll`
 - [x] [mini-grep](https://github.com/sharpicx/RustOffensives/tree/main/mini-grep) implementation
 - [x] [InvokeMethod(String, Object)](https://learn.microsoft.com/en-us/dotnet/api/system.management.managementobject.invokemethod?view=net-10.0-pp#system-management-managementobject-invokemethod(system-string-system-object()))
 - [x] [AppLocker Settings](https://github.com/sharpicx/RustOffensives/tree/main/applocker_settings-rs)
