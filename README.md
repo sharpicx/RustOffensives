@@ -1,6 +1,6 @@
 # RustOffensives
 
-- [exec-assembly](/exec_assembly-rs)
+- [x] [exec-assembly](/exec_assembly-rs)
 - [x] [Dynamic Resolve API](/dynamic_resolve_api-rs) (PoC: Shellcode Execution) – succeed.
     - [x] `ntdll.dll`
     - [x] `kernel32.dll`
