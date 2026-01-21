@@ -3,11 +3,22 @@ use ntapi::ntldr::LDR_DATA_TABLE_ENTRY;
 use std::ffi::CStr;
 use winapi::um::winnt::*;
 
+#[allow(non_snake_case)]
+#[allow(non_camel_case_types)]
+pub struct LIST_ENTRY {
+    pub Flink: *mut LIST_ENTRY,
+}
+
 pub const IMAGE_DOS_SIGNATURE: u16 = 0x5A4D;
 pub const IMAGE_DIRECTORY_ENTRY_EXPORT: usize = 0;
 
-pub fn dbj2_hash(buffer: &[u8]) -> Result<u32, &str> {
-    let mut hsh: u32 = 5381;
+pub fn current_peb() -> *const ntapi::ntpebteb::PEB {
+    unsafe { ntapi::ntpsapi::NtCurrentPeb() }
+}
+
+pub fn hash(buffer: &[u8]) -> Result<u32, &str> {
+    let mut hsh: u32 = 0x1337BEEF;
+    let secret_key: u32 = 0x7A;
     let mut iter: usize = 0;
     while iter < buffer.len() {
         let mut cur = buffer[iter];
@@ -15,40 +26,45 @@ pub fn dbj2_hash(buffer: &[u8]) -> Result<u32, &str> {
             iter += 1;
             continue;
         }
-        if cur >= b'a' {
+        if cur >= b'a' && cur <= b'z' {
             cur -= 0x20;
         }
-        hsh = ((hsh << 5).wrapping_add(hsh)) + cur as u32;
+        hsh = (hsh.wrapping_shl(5).wrapping_add(hsh)) ^ (cur as u32 ^ secret_key);
         iter += 1;
     }
     Ok(hsh)
 }
 
-pub fn get_module_base_by_hash(target_hash: u32) -> *mut u8 {
+pub fn get_module_base(target_hash: u32) -> *mut u8 {
     unsafe {
-        let peb: *const ntapi::ntpebteb::PEB;
-        core::arch::asm!("mov {}, gs:[0x60]", out(reg) peb);
+        let peb = current_peb();
+        if peb.is_null() {
+            return core::ptr::null_mut();
+        }
         let ldr = (*peb).Ldr;
-        let head = &(*ldr).InLoadOrderModuleList as *const _ as *mut _;
-        let mut entry = (*ldr).InLoadOrderModuleList.Flink;
-        while entry != head {
-            let table = entry as *const LDR_DATA_TABLE_ENTRY;
-            let name = (*table).BaseDllName;
-            if !name.Buffer.is_null() && name.Length > 0 {
+        if ldr.is_null() {
+            return core::ptr::null_mut();
+        }
+        let head = &(*ldr).InLoadOrderModuleList as *const _ as *const LIST_ENTRY;
+        let mut cur = (*head).Flink;
+        while !std::ptr::eq(cur, head as *mut LIST_ENTRY) {
+            let entry = cur as *const LDR_DATA_TABLE_ENTRY;
+            let name = (*entry).BaseDllName;
+            if !name.Buffer.is_null() && name.Length != 0 {
                 let bytes = from_raw_parts(name.Buffer as *const u8, name.Length as usize);
-                if let Ok(h) = dbj2_hash(bytes) {
+                if let Ok(h) = hash(bytes) {
                     if h == target_hash {
-                        return (*table).DllBase as *mut u8;
+                        return (*entry).DllBase as *mut u8;
                     }
                 }
             }
-            entry = (*entry).Flink;
+            cur = (*cur).Flink;
         }
         core::ptr::null_mut()
     }
 }
 
-pub fn get_export_by_hash(module_base: *const u8, export_name_hash: u32) -> Option<usize> {
+pub fn get_export(module_base: *const u8, export_name_hash: u32) -> Option<usize> {
     unsafe {
         if module_base.is_null() {
             return None;
@@ -79,7 +95,7 @@ pub fn get_export_by_hash(module_base: *const u8, export_name_hash: u32) -> Opti
         for i in 0..names.len() {
             let name_ptr = module_base.add(names[i] as usize) as *const i8;
             let name_bytes = CStr::from_ptr(name_ptr).to_bytes();
-            if let Ok(hash) = dbj2_hash(name_bytes) {
+            if let Ok(hash) = hash(name_bytes) {
                 if hash == export_name_hash {
                     let ordinal = ordinals[i] as usize;
                     return Some(module_base as usize + functions[ordinal] as usize);

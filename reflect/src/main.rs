@@ -1,19 +1,32 @@
 mod handler;
 mod helper;
+mod rc;
 mod walker;
 
 use crate::handler::load;
-use crate::helper::State;
+use crate::rc::State as rcState;
 use anyhow::Result;
+use hc_256::Hc256;
+use hc_256::cipher::{KeyIvInit, StreamCipher};
 use std::env;
 
 const ENCRYPTED_DATA: &[u8] = include_bytes!("../data.bin");
 
 fn dbytes() -> Vec<u8> {
+    let k = helper::key_bytes();
     let mut buf = ENCRYPTED_DATA.to_vec();
-    let s: Vec<u8> = helper::build_string();
-    let mut rc4 = State::new(&s);
-    rc4.apply_keystream(&mut buf);
+    let xor_len = k.len();
+    for i in 0..buf.len() {
+        buf[i] ^= k[i % xor_len] ^ 0xAA;
+    }
+    let mut rc4 = rcState::create(&k);
+    rc4.apply(&mut buf);
+    let key_fixed = helper::prepare_32_byte_array(&k);
+    let mut iv_seed = b"nonce-".to_vec();
+    iv_seed.extend_from_slice(&k);
+    let iv_fixed = helper::prepare_32_byte_array(&iv_seed);
+    let mut hc_cipher = Hc256::new_from_slices(&key_fixed, &iv_fixed).expect("");
+    hc_cipher.apply_keystream(&mut buf);
     buf
 }
 

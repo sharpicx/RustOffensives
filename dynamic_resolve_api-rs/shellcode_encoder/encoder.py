@@ -3,14 +3,17 @@ import argparse
 from pwn import log
 
 
-def djb2_hash(name: str) -> int:
-    h = 5381
-    for c in name:
-        v = ord(c)
-        if 0x61 <= v <= 0x7A:  # a-z
-            v -= 0x20  # uppercase
-        h = ((h << 5) + h + v) & 0xFFFFFFFF
-    return h
+def _hash(name: str, seed=0x1337BEEF, secret_key=0x7A) -> int:
+    h = seed
+    name_bytes = name.encode('ascii')
+    for b in name_bytes:
+        if b == 0:
+            continue
+        v = b
+        if 0x61 <= v <= 0x7A:
+            v -= 0x20
+        h = (((h << 5) + h) & 0xFFFFFFFF) ^ (v ^ secret_key)
+    return h & 0xFFFFFFFF
 
 
 def load_dictionary(file_path):
@@ -51,8 +54,8 @@ def main():
 
     if args.check_hash:
         target = args.check_hash
-        result = djb2_hash(target)
-        log.info(f"DJB2 Hash for '{target}': {hex(result)}")
+        result = _hash(target)
+        log.info(f"Hash for '{target}': {hex(result)}")
         sys.exit(0)
 
     p1 = log.progress("Dictionary")

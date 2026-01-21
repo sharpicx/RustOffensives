@@ -1,16 +1,13 @@
 # reflect
 
-packing executable with Dynamic Resolve API via Hash, Manual Mapping (Reflective PE Loader), & RC4 encryption (upx-like)
+packing executable with 3 Layered Encryption, Indirect PEB calls, Dynamic Resolve API via Custom Hash, Manual Mapping (Reflective PE Loader), & RC4 encryption (upx-like).
 
 ## Installation
 
-make the chisel encrypted with [RC4](https://github.com/Ropcaster/rc4).
+make the chisel encrypted with [keyed-rs](./keyed-rs).
 
 ```console
-$ rc4 --key Ropcaster1337motherfucker ./chisel.exe
-[+] Success: ./chisel.exe -> ./chisel.bin (Key: 'Ropcaster1337motherfucker')
-$ rc4 --key Ropcaster1337motherfucker ./mimikatz.exe
-[+] Success: ./mimikatz.exe -> ./mimikatz.bin (Key: 'Ropcaster1337motherfucker')
+$ keyed --key sh4rp1cx1337h4x0r0x133777 ./mimikatz.exe
 ```
 
 after that, rename the `chisel.bin` into `data.bin`. put it in the source directory. then, build the source.
@@ -42,7 +39,3 @@ mimikatz # coffee
 
 mimikatz #
 ```
-
-## References
-
-* <https://github.com/Ropcaster/rc4>

