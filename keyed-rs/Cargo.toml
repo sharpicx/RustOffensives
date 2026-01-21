@@ -1,0 +1,25 @@
+[package]
+name = "keyed"
+version = "1.0.0"
+edition = "2024"
+authors = ["sharpicx"]
+
+[dependencies]
+windows = { version = "0.52.0", features = [
+  "Win32_System_Memory",
+  "Win32_System_Threading",
+  "Win32_Security",
+  "Win32_Foundation",
+] }
+rc4 = "0.1.0"
+hc-256 = "0.5.0"
+generic-array = "0.14.6"
+typenum = "1.14.0"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+pic = true
