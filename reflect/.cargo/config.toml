@@ -1,9 +1,9 @@
 [build]
 rustflags = [
     "--remap-path-prefix", "C:/Users/via/.cargo/registry=/cargo",
-    "--remap-path-prefix", "C:/Users/via/.rustup/toolchains=/chain",
+    "--remap-path-prefix", "C:/Users/via/.rustup/toolchains=/chains",
     "-C", "link-arg=/EMITPOGOPHASEINFO:NO",
     "-C", "link-arg=/ALIGN:4096",
-    "-C", "link-arg=/MERGE:.rdata=.text",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
     "-C", "link-arg=/DEBUG:NONE",
 ]
