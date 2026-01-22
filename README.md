@@ -1,8 +1,8 @@
 # RustOffensives
 
-- [x] keyed: encrypting files in HC-256, RC4, and xor cipher `0xAA`.
-- [x] reflect
-    -  packing executable with Dynamic Resolve API via Hash, Manual Mapping (Reflective PE Loader), & RC4 encryption (upx-like)
+- [x] [mini-enum](/mini-enum): mini version of EFEW.
+- [x] [keyed](/keyed): encrypting files in HC-256, RC4, and xor cipher `0xAA`.
+- [x] [reflect](/reflect): packing executable with Dynamic Resolve API via Hash, Manual Mapping (Reflective PE Loader), & RC4 encryption (upx-like)
 - [x] [exec-assembly](/exec_assembly-rs)
 - [x] [Dynamic Resolve API](/dynamic_resolve_api-rs) (PoC: Shellcode Execution) – succeed.
     - [x] `ntdll.dll`
