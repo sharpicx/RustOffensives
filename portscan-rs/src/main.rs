@@ -46,6 +46,8 @@ enum Commands {
         end: u16,
         #[arg(long, default_value_t = 500)]
         timeout_ms: u64,
+        #[arg(long, default_value_t = 500)]
+        concurrency: usize,
         #[arg(long)]
         verbose: bool,
     },
@@ -87,9 +89,10 @@ async fn main() {
             start,
             end,
             timeout_ms,
+            concurrency,
             verbose,
         } => {
-            port_scan(host, start, end, timeout_ms, verbose).await;
+            port_scan(host, start, end, timeout_ms, concurrency, verbose).await;
         } // Commands::HttpGet { url } => {
           //     let _ = reqwest::blocking::get(url);
           // }
@@ -174,17 +177,20 @@ async fn send_tcp(host: String, port: u16, data: String, timeout_ms: u64, verbos
     }
 }
 
-async fn port_scan(target: String, start: u16, end: u16, timeout_ms: u64, verbose: bool) {
+async fn port_scan(
+    target: String,
+    start: u16,
+    end: u16,
+    timeout_ms: u64,
+    concurrency: usize,
+    verbose: bool,
+) {
     let hosts = parse_targets(&target);
     let s = start.min(end);
     let e = start.max(end);
 
-    let cpu = num_cpus::get();
-    let concurrency = (cpu * 200).clamp(64, 4096);
-
     let sem = Arc::new(Semaphore::new(concurrency));
     let open_count = Arc::new(AtomicUsize::new(0));
-
     let mut tasks = Vec::new();
     let dur = Duration::from_millis(timeout_ms);
 
@@ -196,14 +202,10 @@ async fn port_scan(target: String, start: u16, end: u16, timeout_ms: u64, verbos
 
             tasks.push(tokio::spawn(async move {
                 let addr = format!("{}:{}", host, port);
-
-                if timeout(dur, TcpStream::connect(&addr)).await.is_ok() {
+                if let Ok(Ok(_)) = timeout(dur, TcpStream::connect(&addr)).await {
                     open_count.fetch_add(1, Ordering::Relaxed);
-                    if verbose {
-                        println!("[OPEN] {}:{}", host, port);
-                    }
+                    println!("[OPEN] {}:{}", host, port);
                 }
-
                 drop(permit);
             }));
         }
@@ -218,7 +220,6 @@ async fn port_scan(target: String, start: u16, end: u16, timeout_ms: u64, verbos
         );
     }
 }
-
 fn parse_targets(target: &str) -> Vec<String> {
     if target.contains('/') {
         if let Ok(net) = target.parse::<IpNetwork>() {
