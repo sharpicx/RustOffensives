@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
-use futures::future::join_all;
 use ipnetwork::IpNetwork;
 use std::{
+    fs::OpenOptions,
+    io::Write,
     sync::{
         Arc,
         atomic::{AtomicUsize, Ordering},
@@ -42,8 +43,12 @@ enum Commands {
     },
     Scan {
         host: String,
-        start: u16,
-        end: u16,
+        start: Option<u16>,
+        end: Option<u16>,
+        #[arg(long)]
+        common_ports: bool,
+        #[arg(short, long)]
+        output: Option<String>,
         #[arg(long, default_value_t = 500)]
         timeout_ms: u64,
         #[arg(long, default_value_t = 500)]
@@ -51,16 +56,14 @@ enum Commands {
         #[arg(long)]
         verbose: bool,
     },
-    // HttpGet {
-    //     url: String,
-    // },
-    // Hello,
-    // #[cfg(target_os = "windows")]
-    // MessageBox {
-    //     title: String,
-    //     message: String,
-    // },
 }
+
+const COMMON_PORTS: &[u16] = &[
+    80, 443, 8000, 8008, 8080, 8081, 8443, 8888, 9000, 9090, 21, 22, 23, 115, 3389, 5900, 5901,
+    5985, 5986, 1433, 1434, 1521, 3306, 33060, 5432, 6379, 9200, 9300, 27017, 27018, 27019, 7000,
+    7001, 9042, 389, 636, 3268, 3269, 135, 137, 138, 139, 445, 25, 465, 587, 110, 995, 143, 993,
+    2375, 2376, 6443, 8080, 50000, 1883, 8883, 5672, 15672, 5683, 502, 161, 162, 514, 2049,
+];
 
 #[tokio::main]
 async fn main() {
@@ -88,21 +91,24 @@ async fn main() {
             host,
             start,
             end,
+            common_ports,
+            output,
             timeout_ms,
             concurrency,
             verbose,
         } => {
-            port_scan(host, start, end, timeout_ms, concurrency, verbose).await;
-        } // Commands::HttpGet { url } => {
-          //     let _ = reqwest::blocking::get(url);
-          // }
-          // Commands::Hello => {
-          //     println!("Hello from Rust executable!");
-          // }
-          // #[cfg(target_os = "windows")]
-          // Commands::MessageBox { title, message } => {
-          //     show_message_box(&title, &message);
-          // }
+            port_scan(
+                host,
+                start,
+                end,
+                common_ports,
+                output,
+                timeout_ms,
+                concurrency,
+                verbose,
+            )
+            .await;
+        }
     }
 }
 
@@ -179,67 +185,127 @@ async fn send_tcp(host: String, port: u16, data: String, timeout_ms: u64, verbos
 
 async fn port_scan(
     target: String,
-    start: u16,
-    end: u16,
+    start: Option<u16>,
+    end: Option<u16>,
+    use_common: bool,
+    output: Option<String>,
     timeout_ms: u64,
     concurrency: usize,
     verbose: bool,
 ) {
     let hosts = parse_targets(&target);
-    let s = start.min(end);
-    let e = start.max(end);
-
+    let dur = Duration::from_millis(timeout_ms);
     let sem = Arc::new(Semaphore::new(concurrency));
     let open_count = Arc::new(AtomicUsize::new(0));
-    let mut tasks = Vec::new();
-    let dur = Duration::from_millis(timeout_ms);
 
-    for host in hosts {
-        for port in s..=e {
-            let permit = sem.clone().acquire_owned().await.unwrap();
-            let host = host.clone();
-            let open_count = open_count.clone();
+    let ports: Vec<u16> = if use_common {
+        COMMON_PORTS.to_vec()
+    } else {
+        let s = start.unwrap_or(1);
+        let e = end.unwrap_or(1000);
+        (s.min(e)..=s.max(e)).collect()
+    };
 
-            tasks.push(tokio::spawn(async move {
-                let addr = format!("{}:{}", host, port);
-                if let Ok(Ok(_)) = timeout(dur, TcpStream::connect(&addr)).await {
-                    open_count.fetch_add(1, Ordering::Relaxed);
-                    println!("[OPEN] {}:{}", host, port);
+    let (tx, mut rx) = tokio::sync::mpsc::channel(concurrency * 2);
+
+    tokio::spawn(async move {
+        for host in hosts {
+            for &port in &ports {
+                if tx.send((host.clone(), port)).await.is_err() {
+                    break;
                 }
-                drop(permit);
-            }));
+            }
         }
+    });
+
+    while let Some((host, port)) = rx.recv().await {
+        let permit = sem.clone().acquire_owned().await.unwrap();
+        let open_count = open_count.clone();
+        let out_file = output.clone();
+
+        tokio::spawn(async move {
+            let addr = format!("{}:{}", host, port);
+            let res = timeout(dur, TcpStream::connect(&addr)).await;
+
+            if let Ok(Ok(stream)) = res {
+                let _ = stream.set_nodelay(true);
+                open_count.fetch_add(1, Ordering::Relaxed);
+                println!("[OPEN] {}", addr);
+                if let Some(path) = out_file {
+                    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+                        let _ = writeln!(file, "{}", addr);
+                    }
+                }
+            }
+            drop(permit);
+        });
     }
 
-    join_all(tasks).await;
+    let _ = sem.acquire_many(concurrency as u32).await;
 
     if verbose {
         println!(
-            "[INFO] scan complete: open={}",
+            "[INFO] scan complete. open={}",
             open_count.load(Ordering::Relaxed)
         );
     }
 }
+
 fn parse_targets(target: &str) -> Vec<String> {
-    if target.contains('/') {
-        if let Ok(net) = target.parse::<IpNetwork>() {
-            return net.iter().map(|ip| ip.to_string()).collect();
+    let mut all_ips = Vec::new();
+
+    for part in target.split(',') {
+        let part = part.trim();
+
+        if part.contains('-') {
+            if let Some(ips) = parse_ip_range(part) {
+                all_ips.extend(ips);
+                continue;
+            }
+        }
+
+        if part.contains('/') {
+            if let Ok(net) = part.parse::<IpNetwork>() {
+                all_ips.extend(net.iter().map(|ip| ip.to_string()));
+                continue;
+            }
+        }
+
+        if !part.is_empty() {
+            all_ips.push(part.to_string());
         }
     }
-    vec![target.to_string()]
+
+    all_ips
 }
 
-// #[cfg(target_os = "windows")]
-// fn show_message_box(title: &str, message: &str) {
-//     use windows::{
-//         Win32::UI::WindowsAndMessaging::{MB_OK, MessageBoxW},
-//         core::PCWSTR,
-//     };
-//
-//     let t: Vec<u16> = title.encode_utf16().chain(Some(0)).collect();
-//     let m: Vec<u16> = message.encode_utf16().chain(Some(0)).collect();
-//
-//     unsafe {
-//         MessageBoxW(None, PCWSTR(m.as_ptr()), PCWSTR(t.as_ptr()), MB_OK);
-//     }
-// }
+fn parse_ip_range(range_str: &str) -> Option<Vec<String>> {
+    let parts: Vec<&str> = range_str.split('-').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let start_ip_str = parts[0].trim();
+    let end_val_str = parts[1].trim();
+
+    let octets: Vec<&str> = start_ip_str.split('.').collect();
+    if octets.len() != 4 {
+        return None;
+    }
+
+    let base = format!("{}.{}.{}", octets[0], octets[1], octets[2]);
+    let start_val: u8 = octets[3].parse().ok()?;
+    let end_val: u8 = end_val_str.parse().ok()?;
+
+    let (low, high) = if start_val <= end_val {
+        (start_val, end_val)
+    } else {
+        (end_val, start_val)
+    };
+
+    Some(
+        (low..=high)
+            .map(|last| format!("{}.{}", base, last))
+            .collect(),
+    )
+}
