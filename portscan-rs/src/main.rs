@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use futures::future::join_all;
+use ipnetwork::IpNetwork;
 use std::{
     sync::{
         Arc,
@@ -47,15 +49,15 @@ enum Commands {
         #[arg(long)]
         verbose: bool,
     },
-    HttpGet {
-        url: String,
-    },
-    Hello,
-    #[cfg(target_os = "windows")]
-    MessageBox {
-        title: String,
-        message: String,
-    },
+    // HttpGet {
+    //     url: String,
+    // },
+    // Hello,
+    // #[cfg(target_os = "windows")]
+    // MessageBox {
+    //     title: String,
+    //     message: String,
+    // },
 }
 
 #[tokio::main]
@@ -88,17 +90,16 @@ async fn main() {
             verbose,
         } => {
             port_scan(host, start, end, timeout_ms, verbose).await;
-        }
-        Commands::HttpGet { url } => {
-            let _ = reqwest::blocking::get(url);
-        }
-        Commands::Hello => {
-            println!("Hello from Rust executable!");
-        }
-        #[cfg(target_os = "windows")]
-        Commands::MessageBox { title, message } => {
-            show_message_box(&title, &message);
-        }
+        } // Commands::HttpGet { url } => {
+          //     let _ = reqwest::blocking::get(url);
+          // }
+          // Commands::Hello => {
+          //     println!("Hello from Rust executable!");
+          // }
+          // #[cfg(target_os = "windows")]
+          // Commands::MessageBox { title, message } => {
+          //     show_message_box(&title, &message);
+          // }
     }
 }
 
@@ -173,7 +174,8 @@ async fn send_tcp(host: String, port: u16, data: String, timeout_ms: u64, verbos
     }
 }
 
-async fn port_scan(host: String, start: u16, end: u16, timeout_ms: u64, verbose: bool) {
+async fn port_scan(target: String, start: u16, end: u16, timeout_ms: u64, verbose: bool) {
+    let hosts = parse_targets(&target);
     let s = start.min(end);
     let e = start.max(end);
 
@@ -186,30 +188,28 @@ async fn port_scan(host: String, start: u16, end: u16, timeout_ms: u64, verbose:
     let mut tasks = Vec::new();
     let dur = Duration::from_millis(timeout_ms);
 
-    for port in s..=e {
-        let permit = sem.clone().acquire_owned().await.unwrap();
-        let host = host.clone();
-        let open_count = open_count.clone();
+    for host in hosts {
+        for port in s..=e {
+            let permit = sem.clone().acquire_owned().await.unwrap();
+            let host = host.clone();
+            let open_count = open_count.clone();
 
-        let task = tokio::spawn(async move {
-            let addr = format!("{}:{}", host, port);
+            tasks.push(tokio::spawn(async move {
+                let addr = format!("{}:{}", host, port);
 
-            if timeout(dur, TcpStream::connect(&addr)).await.is_ok() {
-                open_count.fetch_add(1, Ordering::Relaxed);
-                if verbose {
-                    println!("[OPEN] {}:{}", host, port);
+                if timeout(dur, TcpStream::connect(&addr)).await.is_ok() {
+                    open_count.fetch_add(1, Ordering::Relaxed);
+                    if verbose {
+                        println!("[OPEN] {}:{}", host, port);
+                    }
                 }
-            }
 
-            drop(permit);
-        });
-
-        tasks.push(task);
+                drop(permit);
+            }));
+        }
     }
 
-    for t in tasks {
-        let _ = t.await;
-    }
+    join_all(tasks).await;
 
     if verbose {
         println!(
@@ -219,17 +219,26 @@ async fn port_scan(host: String, start: u16, end: u16, timeout_ms: u64, verbose:
     }
 }
 
-#[cfg(target_os = "windows")]
-fn show_message_box(title: &str, message: &str) {
-    use windows::{
-        Win32::UI::WindowsAndMessaging::{MB_OK, MessageBoxW},
-        core::PCWSTR,
-    };
-
-    let t: Vec<u16> = title.encode_utf16().chain(Some(0)).collect();
-    let m: Vec<u16> = message.encode_utf16().chain(Some(0)).collect();
-
-    unsafe {
-        MessageBoxW(None, PCWSTR(m.as_ptr()), PCWSTR(t.as_ptr()), MB_OK);
+fn parse_targets(target: &str) -> Vec<String> {
+    if target.contains('/') {
+        if let Ok(net) = target.parse::<IpNetwork>() {
+            return net.iter().map(|ip| ip.to_string()).collect();
+        }
     }
+    vec![target.to_string()]
 }
+
+// #[cfg(target_os = "windows")]
+// fn show_message_box(title: &str, message: &str) {
+//     use windows::{
+//         Win32::UI::WindowsAndMessaging::{MB_OK, MessageBoxW},
+//         core::PCWSTR,
+//     };
+//
+//     let t: Vec<u16> = title.encode_utf16().chain(Some(0)).collect();
+//     let m: Vec<u16> = message.encode_utf16().chain(Some(0)).collect();
+//
+//     unsafe {
+//         MessageBoxW(None, PCWSTR(m.as_ptr()), PCWSTR(t.as_ptr()), MB_OK);
+//     }
+// }

@@ -1,5 +1,6 @@
 # RustOffensives
 
+- [x] [portscan-rs]: simple portscanning subnet/CIDR.
 - [x] [mini-enum](/mini-enum): mini version of EFEW.
 - [x] [keyed](/keyed): encrypting files in HC-256, RC4, and xor cipher `0xAA`.
 - [x] [reflect](/reflect): packing executable with Dynamic Resolve API via Hash, Manual Mapping (Reflective PE Loader), & RC4 encryption (upx-like)
