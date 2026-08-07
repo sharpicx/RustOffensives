@@ -1,5 +1,6 @@
 # RustOffensives
 
+- [x] [remote_dump-rs](/remote_dump-rs): dumping CRC32 PEB modules and exports related to FFmodule HTB challenge.
 - [ ] [pic-shellcode](/pic-shellcode): Position Independent Shellcode for shell-handler (coming soon).
     - [ ] Stager
     - [ ] Stage
